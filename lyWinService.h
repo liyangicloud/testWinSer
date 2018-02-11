@@ -7,4 +7,5 @@
 
 
 void fnInstallService(void);
+void fnTestSomeFunc(void);
 
