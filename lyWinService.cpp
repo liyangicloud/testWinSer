@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "lyWinService.h"
 #include "windows.h"  //"winsvc.h",当项目为mfc的时候，使用winsvc.h，为命令行模式的时候使用windows.h
+#include "string.h"
 
 #pragma comment(lib,"Advapi32")
 
@@ -45,18 +46,70 @@ void fnTestSomeFunc()
 
 	lys("sch handler is 0x%x",schSCManager->unused);
 
-
-	if(FALSE == EnumServicesStatusEx(schSCManager,))
+	DWORD dwSizeOfBuffer = 0;
+	DWORD dwServicesReturned = 0;
+	DWORD dwResumeHandle = 0;
+	BYTE *lpBuffer;
+	ENUM_SERVICE_STATUS_PROCESS * lpServicesInfo;
+	if(TRUE ==EnumServicesStatusEx(schSCManager,SC_ENUM_PROCESS_INFO,SERVICE_WIN32,SERVICE_STATE_ALL,NULL,\
+		0,&dwSizeOfBuffer,&dwServicesReturned,&dwResumeHandle,NULL))
 	{
-		lys("can not enum services,error is %d",GetLastError());
+		lys("can not get the size of service info buffer ,error is %d",GetLastError());
     	CloseServiceHandle(schSCManager);
 		return;
 	}
 
+	lys("pcbBytesNeeded=%d,lpServicesReturned=%d,lpResumeHandle=%d",dwSizeOfBuffer,dwServicesReturned,dwResumeHandle);
+
+	if(ERROR_MORE_DATA != GetLastError())
+	{
+		lys("Getlasterror wrong!");
+    	CloseServiceHandle(schSCManager);
+		return;
+	}
+
+	lpBuffer = (BYTE *)malloc(dwSizeOfBuffer);
+
+	if (NULL == lpBuffer)
+	{
+		lys("malloc failed!");
+		CloseServiceHandle(schSCManager);
+		return;
+	}
+
+	if(FALSE == EnumServicesStatusEx(schSCManager,SC_ENUM_PROCESS_INFO,\
+		SERVICE_WIN32,SERVICE_STATE_ALL,lpBuffer,dwSizeOfBuffer,\
+		&dwSizeOfBuffer,&dwServicesReturned,&dwResumeHandle,NULL))
+	{
+		lys("can not enum services,error is %d",GetLastError());
+		free(lpBuffer);
+		lpBuffer = NULL;
+    	CloseServiceHandle(schSCManager);
+		return;
+	}
+
+	lys("pcbBytesNeeded=%d,lpServicesReturned=%d,lpResumeHandle=%d",dwSizeOfBuffer,dwServicesReturned,dwResumeHandle);
+
 	//在此打印所有的枚举出的服务，也可以过滤出特定的结果
 
+	lpServicesInfo = (ENUM_SERVICE_STATUS_PROCESS *)lpBuffer;
+	CString strTT;
+	for(DWORD i=0;i < dwServicesReturned;i++)
+	{
+		lys("    %d",i);
+		wprintf(L"    service name is     :%s\n",(lpServicesInfo+i)->lpServiceName);
+		wprintf(L"service display info is :%s\n",(lpServicesInfo+i)->lpDisplayName);
+		lys("current state is %d",(lpServicesInfo+i)->ServiceStatusProcess.dwCurrentState);
+		//if(NULL != StrChr())
+		{
+		
+		}
+		//Sleep(500);
+	}
 
 
+	free(lpBuffer);
+	lpBuffer = NULL;
 	CloseServiceHandle(schSCManager);
 	return;
 }
