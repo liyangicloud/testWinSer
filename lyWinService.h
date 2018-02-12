@@ -1,11 +1,12 @@
-#pragma once
+ï»¿#pragma once
 #include "stdafx.h"
 
 
+//å¤–éƒ¨å‡½æ•°å£°æ˜Ž
 
-//Íâ²¿º¯ÊýÉùÃ÷
 
-
-void fnInstallService(void);
+void fnInstallService(TCHAR *lpBinPath);
 void fnTestSomeFunc(void);
+void fnFindSomeServiceWithCommitString(void);
+
 

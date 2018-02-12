@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "lyWinService.h"
 #include "windows.h"  //"winsvc.h",当项目为mfc的时候，使用winsvc.h，为命令行模式的时候使用windows.h
-#include "string.h"
+#include "atlstr.h"
 
 #pragma comment(lib,"Advapi32")
 
@@ -21,12 +21,18 @@ TCHAR achServiceNameOfDisplay[] = L"LY---Service name of display,hahhaha!";
 
 
 
+
+
 void fnTestSomeFunc()
 {
+	//要查找的服务名称中包含的特定字符串
+	LPTSTR lpDestServiceName = L"Just";
+
 	SC_HANDLE schSCManager;
 	SC_HANDLE schService;
 	TCHAR chBinPath[MAX_PATH]=L"\"C:\\Owntools\\testWS.exe\"";
 	SERVICE_STATUS ssCur;
+
 
 
 	lys("into the func");
@@ -93,16 +99,130 @@ void fnTestSomeFunc()
 	//在此打印所有的枚举出的服务，也可以过滤出特定的结果
 
 	lpServicesInfo = (ENUM_SERVICE_STATUS_PROCESS *)lpBuffer;
-	CString strTT;
 	for(DWORD i=0;i < dwServicesReturned;i++)
 	{
-		lys("    %d",i);
-		wprintf(L"    service name is     :%s\n",(lpServicesInfo+i)->lpServiceName);
-		wprintf(L"service display info is :%s\n",(lpServicesInfo+i)->lpDisplayName);
-		lys("current state is %d",(lpServicesInfo+i)->ServiceStatusProcess.dwCurrentState);
-		//if(NULL != StrChr())
-		{
 		
+		if(NULL != StrStr((lpServicesInfo+i)->lpServiceName,lpDestServiceName))
+		{
+			lys("    %d",i);
+			wprintf(L"    service name is     :%s\n",(lpServicesInfo+i)->lpServiceName);
+			wprintf(L"service display info is :%s\n",(lpServicesInfo+i)->lpDisplayName);
+			lys("current state is %d",(lpServicesInfo+i)->ServiceStatusProcess.dwCurrentState);
+			////已经找到特定的程序，然后判断服务的状态，如果不为停止状态则进行停止操作，然后删除
+			schService = OpenService(schSCManager,(lpServicesInfo+i)->lpServiceName,SC_MANAGER_ALL_ACCESS );
+			if (NULL == schService)
+			{
+				lys("can not open servcie,error is %d",GetLastError());
+				continue ;
+			}
+
+			if(FALSE == QueryServiceStatus(schService,&ssCur))
+			{
+				lys("query status is failed! error is %d",GetLastError());
+				CloseServiceHandle(schService);
+				continue ;
+			}
+
+			if(SERVICE_RUNNING == ssCur.dwCurrentState)
+			{//如果服务的状态不是停止，那么必须停掉该服务
+				SERVICE_CONTROL_STATUS_REASON_PARAMS scsp;
+				ControlServiceEx(schService,SERVICE_CONTROL_STOP,SERVICE_CONTROL_STATUS_REASON_INFO,&scsp);
+			}
+			DeleteService(schService);
+			CloseServiceHandle(schService);
+			lys("success in deletling the service.");
+		}
+	}
+
+
+	free(lpBuffer);
+	lpBuffer = NULL;
+	CloseServiceHandle(schSCManager);
+	return;
+}
+
+void fnFindSomeServiceWithCommitString()
+{
+	//要查找的服务名称中包含的特定字符串
+	LPTSTR lpDestServiceName = L"Just";
+
+	SC_HANDLE schSCManager;
+
+
+
+	lys("into the func");
+
+
+	//获取指定SCM（服务控制管理器）的句柄,参数1指定计算机名称、为NULL则取本机SCM句柄，参数3为权限、SC_MANAGER_ALL_ACCESS即可  
+	schSCManager = OpenSCManager(
+		NULL,                    // local computer  
+		NULL,                    // ServicesActive database   
+		SC_MANAGER_ALL_ACCESS);  // full access rights   
+
+	if (NULL == schSCManager)
+	{
+		lys("can not open scm,error is %d",GetLastError());
+		return;
+	}
+
+	lys("sch handler is 0x%x",schSCManager->unused);
+
+	DWORD dwSizeOfBuffer = 0;
+	DWORD dwServicesReturned = 0;
+	DWORD dwResumeHandle = 0;
+	BYTE *lpBuffer;
+	ENUM_SERVICE_STATUS_PROCESS * lpServicesInfo;
+	if(TRUE ==EnumServicesStatusEx(schSCManager,SC_ENUM_PROCESS_INFO,SERVICE_WIN32,SERVICE_STATE_ALL,NULL,\
+		0,&dwSizeOfBuffer,&dwServicesReturned,&dwResumeHandle,NULL))
+	{
+		lys("can not get the size of service info buffer ,error is %d",GetLastError());
+    	CloseServiceHandle(schSCManager);
+		return;
+	}
+
+	lys("pcbBytesNeeded=%d,lpServicesReturned=%d,lpResumeHandle=%d",dwSizeOfBuffer,dwServicesReturned,dwResumeHandle);
+
+	if(ERROR_MORE_DATA != GetLastError())
+	{
+		lys("Getlasterror wrong!");
+    	CloseServiceHandle(schSCManager);
+		return;
+	}
+
+	lpBuffer = (BYTE *)malloc(dwSizeOfBuffer);
+
+	if (NULL == lpBuffer)
+	{
+		lys("malloc failed!");
+		CloseServiceHandle(schSCManager);
+		return;
+	}
+
+	if(FALSE == EnumServicesStatusEx(schSCManager,SC_ENUM_PROCESS_INFO,\
+		SERVICE_WIN32,SERVICE_STATE_ALL,lpBuffer,dwSizeOfBuffer,\
+		&dwSizeOfBuffer,&dwServicesReturned,&dwResumeHandle,NULL))
+	{
+		lys("can not enum services,error is %d",GetLastError());
+		free(lpBuffer);
+		lpBuffer = NULL;
+    	CloseServiceHandle(schSCManager);
+		return;
+	}
+
+	lys("pcbBytesNeeded=%d,lpServicesReturned=%d,lpResumeHandle=%d",dwSizeOfBuffer,dwServicesReturned,dwResumeHandle);
+
+	//在此打印所有的枚举出的服务，也可以过滤出特定的结果
+
+	lpServicesInfo = (ENUM_SERVICE_STATUS_PROCESS *)lpBuffer;
+	for(DWORD i=0;i < dwServicesReturned;i++)
+	{
+		
+		if(NULL != StrStr((lpServicesInfo+i)->lpServiceName,lpDestServiceName))
+		{
+			lys("    %d",i);
+			wprintf(L"    service name is     :%s\n",(lpServicesInfo+i)->lpServiceName);
+			wprintf(L"service display info is :%s\n",(lpServicesInfo+i)->lpDisplayName);
+			lys("current state is %d",(lpServicesInfo+i)->ServiceStatusProcess.dwCurrentState);
 		}
 		//Sleep(500);
 	}
@@ -140,6 +260,7 @@ void fnQueryService()
 
 	lys("sch handler is 0x%x",schSCManager->unused);
 
+	//在全局变量处定义了一个服务的名字，打开这个服务然后查询他的状态
 	schService = OpenService(schSCManager,achServiceName,SC_MANAGER_ALL_ACCESS );
 	if (NULL == schService)
 	{
@@ -167,15 +288,24 @@ void fnQueryService()
 
 
 
-void fnInstallService()
+void fnInstallService(TCHAR *lpBinPath,TCHAR *lpServiceName,TCHAR *lpServiceDisplayName)
 {
 	SC_HANDLE schSCManager;
 	SC_HANDLE schService;
 	TCHAR chBinPath[MAX_PATH]=L"\"C:\\Owntools\\testWS.exe\"";
 
 
-
-	lys("into the func");
+	//查询路径中是否有空格，如果有空格必须符合特定格式
+	if(NULL == StrChr(lpBinPath,L' '))
+	{
+		wsprintf(chBinPath,L"%s",lpBinPath);
+	}
+	else
+	{
+		wsprintf(chBinPath,L"\"%s\"",lpBinPath);
+	}
+	
+	lys("into the func,bin is :%s",chBinPath);
 
 
 	//获取指定SCM（服务控制管理器）的句柄,参数1指定计算机名称、为NULL则取本机SCM句柄，参数3为权限、SC_MANAGER_ALL_ACCESS即可  
@@ -203,8 +333,8 @@ void fnInstallService()
 	*/
 	schService = CreateService(
 		schSCManager,              // SCM database   
-		achServiceName,                   // name of service   
-		achServiceNameOfDisplay,                   // service name to display   
+		lpServiceName,                   // name of service   
+		lpServiceDisplayName,                   // service name to display   
 		SERVICE_ALL_ACCESS,        // desired access   
 		SERVICE_WIN32_OWN_PROCESS, // service type   
 		SERVICE_AUTO_START,      // start type   
