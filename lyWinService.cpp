@@ -16,17 +16,18 @@
 
 
 
-TCHAR achServiceName[] = L"LY---Just Test hahaha!";
-TCHAR achServiceNameOfDisplay[] = L"LY---Service name of display,hahhaha!";
-
-
+TCHAR g_achServiceName[] = L"tentcent QQ protection oi";
+TCHAR g_achServiceNameOfDisplay[] = L"QQ Yun guanjia";
 
 
 
 void fnTestSomeFunc()
+{}
+
+void fnDeleteService()
 {
 	//要查找的服务名称中包含的特定字符串
-	LPTSTR lpDestServiceName = L"Just";
+	LPTSTR lpDestServiceName = g_achServiceName;//L"Just";
 
 	SC_HANDLE schSCManager;
 	SC_HANDLE schService;
@@ -144,7 +145,7 @@ void fnTestSomeFunc()
 void fnFindSomeServiceWithCommitString()
 {
 	//要查找的服务名称中包含的特定字符串
-	LPTSTR lpDestServiceName = L"Just";
+	LPTSTR lpDestServiceName = L"QQ";
 
 	SC_HANDLE schSCManager;
 
@@ -261,7 +262,7 @@ void fnQueryService()
 	lys("sch handler is 0x%x",schSCManager->unused);
 
 	//在全局变量处定义了一个服务的名字，打开这个服务然后查询他的状态
-	schService = OpenService(schSCManager,achServiceName,SC_MANAGER_ALL_ACCESS );
+	schService = OpenService(schSCManager,g_achServiceName,SC_MANAGER_ALL_ACCESS );
 	if (NULL == schService)
 	{
 		lys("can not open servcie,error is %d",GetLastError());
@@ -286,7 +287,12 @@ void fnQueryService()
 	return;
 }
 
+void fnInstallServiceTemp()
+{
+	TCHAR chBinPath[MAX_PATH]=L"C:\\pj\\msService\\Debug\\msService.exe";
+	fnInstallService(chBinPath,g_achServiceName,g_achServiceNameOfDisplay);
 
+}
 
 void fnInstallService(TCHAR *lpBinPath,TCHAR *lpServiceName,TCHAR *lpServiceDisplayName)
 {
