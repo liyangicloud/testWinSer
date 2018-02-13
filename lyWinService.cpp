@@ -127,6 +127,9 @@ void fnDeleteService()
 			if(SERVICE_RUNNING == ssCur.dwCurrentState)
 			{//如果服务的状态不是停止，那么必须停掉该服务
 				SERVICE_CONTROL_STATUS_REASON_PARAMS scsp;
+				scsp.dwReason = SERVICE_STOP_REASON_FLAG_PLANNED;
+				scsp.pszComment = L"as planned";
+
 				ControlServiceEx(schService,SERVICE_CONTROL_STOP,SERVICE_CONTROL_STATUS_REASON_INFO,&scsp);
 			}
 			DeleteService(schService);
@@ -289,7 +292,7 @@ void fnQueryService()
 
 void fnInstallServiceTemp()
 {
-	TCHAR chBinPath[MAX_PATH]=L"C:\\pj\\msService\\Debug\\msService.exe";
+	TCHAR chBinPath[MAX_PATH]=L"C:\\pj\\msStandard\\Debug\\msStandard.exe";
 	fnInstallService(chBinPath,g_achServiceName,g_achServiceNameOfDisplay);
 
 }
@@ -362,6 +365,9 @@ void fnInstallService(TCHAR *lpBinPath,TCHAR *lpServiceName,TCHAR *lpServiceDisp
 	{
 		lys("Service installed successfully");
 	}
+
+
+	StartService(schService,0,NULL);
 
 	//所有SCM句柄和服务句柄都要妥善关闭  
 	//否则在后续DeleteService卸载服务时SCM仅标记该服务要卸载但不执行，等所有打开该服务的句柄均关闭后才执行卸载、或等电脑重启  
