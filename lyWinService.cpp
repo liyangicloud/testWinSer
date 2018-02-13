@@ -127,7 +127,7 @@ void fnDeleteService()
 			if(SERVICE_RUNNING == ssCur.dwCurrentState)
 			{//如果服务的状态不是停止，那么必须停掉该服务
 				SERVICE_CONTROL_STATUS_REASON_PARAMS scsp;
-				scsp.dwReason = SERVICE_STOP_REASON_FLAG_PLANNED;
+				scsp.dwReason = SERVICE_STOP_REASON_FLAG_PLANNED|SERVICE_STOP_REASON_MAJOR_APPLICATION|SERVICE_STOP_REASON_MINOR_OTHER;
 				scsp.pszComment = L"as planned";
 
 				ControlServiceEx(schService,SERVICE_CONTROL_STOP,SERVICE_CONTROL_STATUS_REASON_INFO,&scsp);
