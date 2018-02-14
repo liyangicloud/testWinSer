@@ -1,3 +1,4 @@
+#include "xbsocket.h"
 #include <windows.h>
 #include <tchar.h>
 #include <strsafe.h>
@@ -10,7 +11,7 @@ SERVICE_STATUS          gSvcStatus;
 SERVICE_STATUS_HANDLE   gSvcStatusHandle; 
 HANDLE                  ghSvcStopEvent = NULL;
 TCHAR g_cQQServiceUserDefinedData[] = L"this can be a struct data using malloc function ";
-
+XBUDPClient g_udpLog;
 
 DWORD WINAPI SvcCtrlHandler(DWORD  dwCtrl,DWORD  dwEventType,LPVOID lpEventData,LPVOID lpContext);
 VOID WINAPI SvcMain( DWORD, LPTSTR * ); 
@@ -42,6 +43,12 @@ void __cdecl _tmain(int argc, TCHAR *argv[])
  
     // This call returns when the service has stopped. 
     // The process should simply terminate when the call returns.
+	if (FALSE == g_udpLog.init("127.0.0.1",7561))
+	{
+		return ;
+	}
+
+	g_udpLog.sendData("already in service!",0);
 
     if (!StartServiceCtrlDispatcher( DispatchTable )) 
     { 
@@ -128,15 +135,23 @@ VOID SvcInit( DWORD dwArgc, LPTSTR *lpszArgv)
     ReportSvcStatus( SERVICE_RUNNING, NO_ERROR, 0 );
 
     // TO_DO: Perform work until service stops.
-
+	SYSTEMTIME stCur;
+	char acUDPBuffer[256];
     while(1)
     {
         // Check whether to stop the service.
 
-        WaitForSingleObject(ghSvcStopEvent, INFINITE);
+		GetLocalTime(&stCur);
+		sprintf(acUDPBuffer,"I am running at %d:%d:%d:%d",stCur.wHour,stCur.wMinute,stCur.wSecond,stCur.wMilliseconds);
+		g_udpLog.sendData(acUDPBuffer,0);
 
-        ReportSvcStatus( SERVICE_STOPPED, NO_ERROR, 0 );
-        return;
+        if (WAIT_OBJECT_0 == WaitForSingleObject(ghSvcStopEvent, 5000))
+		{
+			g_udpLog.sendData("I am game over!",0);
+			ReportSvcStatus( SERVICE_STOPPED, NO_ERROR, 0 );
+			return;
+		}
+
     }
 }
 

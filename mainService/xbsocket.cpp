@@ -1,5 +1,5 @@
-#include "stdafx.h"
 #include "xbsocket.h"
+#pragma comment(lib, "ws2_32.lib")
  
 
 XBUDPClient::XBUDPClient()
@@ -32,8 +32,17 @@ BOOL XBUDPClient::init( char *pcdestAddr,unsigned short usDestPort)
 	m_bInitSuccess = TRUE;
 	return TRUE;
 }
-int XBUDPClient::sendData(const char *buf, const int ilen)
+int XBUDPClient::sendData(const char *buf, int ilen)
 {
+	if (0 == ilen)
+	{
+		ilen = strlen(buf);
+	}
+
+	if (0 == ilen)
+	{
+		return 0;
+	}
 
 	return sendto(m_sock,buf, ilen, 0, \
 		(SOCKADDR *) & m_destAddress, sizeof (m_destAddress));

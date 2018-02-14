@@ -1,7 +1,6 @@
 #pragma once
 
 #include<Winsock2.h>
-#pragma comment(lib, "ws2_32.lib")
 
 #define XB_UDP_BUFFER_LEN 1024
 
@@ -33,6 +32,6 @@ class XBUDPClient{
 		~XBUDPClient();
 
 		BOOL init( char *destAddr,unsigned short usDestPort);
-		int sendData(const char *buf, const int ilen);
+		int sendData(const char *buf, int ilen);
 };
  
