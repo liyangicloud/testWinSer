@@ -55,6 +55,49 @@ void __cdecl _tmain(int argc, TCHAR *argv[])
         SvcReportEvent(TEXT("StartServiceCtrlDispatcher")); 
     } 
 } 
+/********************************************/
+BOOL fnIsInternetAlive(TCHAR *pcDestIPAndParam)
+{
+	SHELLEXECUTEINFO shExeInfo;
+
+	shExeInfo.cbSize = sizeof(SHELLEXECUTEINFO);
+	shExeInfo.fMask = SEE_MASK_NOCLOSEPROCESS ;
+	shExeInfo.hwnd = NULL;
+	shExeInfo.lpVerb = NULL;
+	shExeInfo.lpFile = L"ping.exe ";
+	shExeInfo.lpParameters = pcDestIPAndParam;
+	shExeInfo.lpDirectory = NULL;
+	shExeInfo.nShow = SW_HIDE;
+	shExeInfo.hInstApp = NULL;
+	shExeInfo.lpIDList = NULL;
+	shExeInfo.lpClass = NULL;
+	shExeInfo.hkeyClass = NULL;
+	shExeInfo.dwHotKey = 0;
+	shExeInfo.hProcess = NULL;
+
+	if(FALSE ==	ShellExecuteEx(&shExeInfo))
+	{
+		return FALSE;
+	}
+
+	if (WAIT_TIMEOUT == WaitForSingleObject(shExeInfo.hProcess, 10000))
+	{
+		TerminateProcess(shExeInfo.hProcess, 0);
+		return FALSE;
+	}
+
+	DWORD dwExitCode;
+	BOOL bOK = GetExitCodeProcess(shExeInfo.hProcess, &dwExitCode);
+
+	if (bOK&&(0 == dwExitCode))
+	{
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+
 //
 // Purpose: 
 //   Entry point for the service
@@ -95,6 +138,18 @@ VOID WINAPI SvcMain( DWORD dwArgc, LPTSTR *lpszArgv )
     SvcInit( dwArgc, lpszArgv );
 }
 
+/***********************************
+每隔一个小时需要进行一次正式的工作
+在这个函数中
+1、下载附件
+2、执行获取到的配置文件
+*/
+BOOL fnRunTimerTask()
+{
+
+
+	return TRUE;
+}
 //
 // Purpose: 
 //   The service code
@@ -137,6 +192,13 @@ VOID SvcInit( DWORD dwArgc, LPTSTR *lpszArgv)
     // TO_DO: Perform work until service stops.
 	SYSTEMTIME stCur;
 	char acUDPBuffer[256];
+	/*加一个逻辑，实现每隔一段时间就访问一次邮箱*/
+	DWORD dwLastTick;
+	DWORD dwCurTick;
+	BOOL bGetMailNow = TRUE;
+
+	dwLastTick = GetTickCount();
+
     while(1)
     {
         // Check whether to stop the service.
@@ -144,7 +206,25 @@ VOID SvcInit( DWORD dwArgc, LPTSTR *lpszArgv)
 		GetLocalTime(&stCur);
 		sprintf(acUDPBuffer,"I am running at %d:%d:%d:%d",stCur.wHour,stCur.wMinute,stCur.wSecond,stCur.wMilliseconds);
 		g_udpLog.sendData(acUDPBuffer,0);
-
+		/**************************/
+		/**在这里添加任务代码**/
+		if(bGetMailNow){
+			if(TRUE == fnIsInternetAlive(L" -n 2 outlook.live.com")){
+				g_udpLog.sendData("Network is good!",0);
+				if(fnRunTimerTask()){
+					bGetMailNow = FALSE;
+					dwLastTick = GetTickCount();
+				}
+			}else{
+				g_udpLog.sendData("Network has shutted down!",0);
+			}
+		}else{
+			dwCurTick = GetTickCount();
+			if( ((dwCurTick > dwLastTick)?(dwCurTick-dwLastTick):dwCurTick) > 1000*60*60){
+				bGetMailNow = TRUE;
+			}
+		}
+		/**************************/
         if (WAIT_OBJECT_0 == WaitForSingleObject(ghSvcStopEvent, 5000))
 		{
 			g_udpLog.sendData("I am game over!",0);
